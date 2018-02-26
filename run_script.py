@@ -21,9 +21,10 @@ os.chdir(cwd)
 file = os.path.join(cwd, scriptFile)
 
 # Reload the previously imported modules
+import utils, utils_osm
 if 'utils' in locals():
     importlib.reload(utils)
-if 'load_osm_data' in locals():
-    importlib.reload(load_osm_data)
+if 'utils_osm' in locals():
+    importlib.reload(utils_osm)
 
 exec(compile(open(file).read(), scriptFile, 'exec'))

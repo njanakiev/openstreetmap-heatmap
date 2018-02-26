@@ -2,7 +2,7 @@ import overpy
 import json
 
 
-def load_overpass_points(iso_a2, tag_key='amenity', tag_value='cafe'):
+def overpass_load_points(iso_a2, tag_key='amenity', tag_value='cafe'):
     """Load points from OSM with overpy"""
 
     api = overpy.Overpass()
@@ -53,7 +53,7 @@ def save_points(filepath, coords, names=None, wgs84=True):
         feature['type'] = 'Feature'
         feature['geometry'] = {}
         feature['geometry']['type'] = 'Point'
-        feature['geometry']['coords'] = coord
+        feature['geometry']['coordinates'] = coord
 
         if names is not None and name is not None:
             feature['properties'] = {}
@@ -80,11 +80,11 @@ def load_points(filepath):
     with open(filepath, 'r') as f:
         data = json.load(f)
         if data['type'] == 'MultiPoint':
-            coords = data['coords']
+            coords = data['coordinates']
             names = [None] * len(coords)
         elif data['type'] == 'FeatureCollection':
             for feature in data['features']:
-                coords.append(feature['geometry']['coords'])
+                coords.append(feature['geometry']['coordinates'])
                 if 'properties' in feature and 'name' in feature['properties']:
                     names.append(feature['properties']['name'])
                 else:
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     iso_a2, tag_key, tag_value = 'DE', 'amenity', 'biergarten'
     print(iso_a2, tag_key, tag_value)
 
-    coords, names = load_overpass_points(iso_a2, tag_key, tag_value)
+    coords, names = overpass_load_points(iso_a2, tag_key, tag_value)
     print('Number of points : {}'.format(len(coords)))
 
     filepath = 'data/points_{}_{}_{}.json'.format(iso_a2, tag_key, tag_value)

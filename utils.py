@@ -3,7 +3,7 @@ import bpy
 import bmesh
 
 
-def simpleMaterial(diffuse_color):
+def simple_material(diffuse_color):
     mat = bpy.data.materials.new('Material')
 
     # Diffuse
@@ -16,7 +16,7 @@ def simpleMaterial(diffuse_color):
 
     return mat
 
-def bmeshToObject(bm, name='Object'):
+def bmesh_to_object(bm, name='Object'):
     mesh = bpy.data.meshes.new(name+'Mesh')
     bm.to_mesh(mesh)
     bm.free()
@@ -27,20 +27,20 @@ def bmeshToObject(bm, name='Object'):
 
     return obj
 
-def trackToConstraint(obj, target):
+def track_to_constraint(obj, target):
     constraint = obj.constraints.new('TRACK_TO')
     constraint.target = target
     constraint.track_axis = 'TRACK_NEGATIVE_Z'
     constraint.up_axis = 'UP_Y'
 
-def createTarget(origin=(0,0,0)):
+def create_target(origin=(0,0,0)):
     tar = bpy.data.objects.new('Target', None)
     bpy.context.scene.objects.link(tar)
     tar.location = origin
 
     return tar
 
-def createCamera(origin=(0,0,0), target=None, lens=35, clip_start=0.1, clip_end=200, camera_type='PERSP', ortho_scale=6):
+def create_camera(origin=(0,0,0), target=None, lens=35, clip_start=0.1, clip_end=200, camera_type='PERSP', ortho_scale=6):
     # Create object and camera
     camera = bpy.data.cameras.new("Camera")
     camera.lens = lens
@@ -56,10 +56,10 @@ def createCamera(origin=(0,0,0), target=None, lens=35, clip_start=0.1, clip_end=
     bpy.context.scene.objects.link(obj)
     bpy.context.scene.camera = obj # Make this the current camera
 
-    if target: trackToConstraint(obj, target)
+    if target: track_to_constraint(obj, target)
     return obj
 
-def createLamp(origin, type='POINT', energy=1, color=(1,1,1), target=None):
+def create_lamp(origin, type='POINT', energy=1, color=(1,1,1), target=None):
     # Lamp types: 'POINT', 'SUN', 'SPOT', 'HEMI', 'AREA'
     bpy.ops.object.add(type='LAMP', location=origin)
     obj = bpy.context.object
@@ -67,37 +67,40 @@ def createLamp(origin, type='POINT', energy=1, color=(1,1,1), target=None):
     obj.data.energy = energy
     obj.data.color = color
 
-    if target: trackToConstraint(obj, target)
+    if target: track_to_constraint(obj, target)
     return obj
 
-def renderToFolder(renderFolder='rendering', renderName='render', res_x=800, res_y=800, res_percentage=100, animation=False, frame_end=None, render_opengl=False):
+def render_to_folder(render_folder='render', render_name='render', res_x=800, res_y=800, res_percentage=100, animation=False, frame_end=None, render_opengl=False):
     print('renderToFolder called')
-    scn = bpy.context.scene
-    scn.render.resolution_x = res_x
-    scn.render.resolution_y = res_y
-    scn.render.resolution_percentage = res_percentage
+    print('render_folder : {}'.format(render_folder))
+    print('render_name   : {}'.format(render_name))
+
+    scene = bpy.context.scene
+    scene.render.resolution_x = res_x
+    scene.render.resolution_y = res_y
+    scene.render.resolution_percentage = res_percentage
     if frame_end:
-        scn.frame_end = frame_end
+        scene.frame_end = frame_end
 
     # Check if script is executed inside Blender
     if (bpy.context.space_data is None) or render_opengl:
         # Specify folder to save rendering and check if it exists
-        render_folder = os.path.join(os.getcwd(), renderFolder)
+        render_folder = os.path.join(os.getcwd(), render_folder)
         if(not os.path.exists(render_folder)):
             os.mkdir(render_folder)
 
         if animation:
             # Render animation
-            scn.render.filepath = os.path.join(render_folder,
-                renderName)
+            scene.render.filepath = os.path.join(render_folder,
+                render_name)
             if render_opengl:
                 bpy.ops.render.opengl(animation=True, view_context=False)
             else:
                 bpy.ops.render.render(animation=True)
         else:
             # Render still frame
-            scn.render.filepath = os.path.join(render_folder,
-                renderName + '.png')
+            scene.render.filepath = os.path.join(render_folder,
+                render_name + '.png')
             if render_opengl:
                 bpy.ops.render.opengl(write_still=True, view_context=False)
             else:

@@ -8,7 +8,7 @@ from mathutils import Matrix, Vector
 from matplotlib import cm
 from bpy.app.handlers import persistent
 import utils
-import load_osm_data
+import utils_osm
 from math import sin, cos, pi
 TAU = 2*pi
 
@@ -32,7 +32,7 @@ def normalize_points(points):
     return data
 
 
-def heatmap_grid(data, sigmaSq=0.0001, n=20, m=2):
+def heatmap_grid(data, sigma_sq=0.0001, n=20, m=2):
     """Create n by n grid with heatmap from data with gaussian distribution of input data set"""
 
     X = np.ndarray((n, n), dtype=object)
@@ -56,7 +56,7 @@ def heatmap_grid(data, sigmaSq=0.0001, n=20, m=2):
                     if X[i, j] is not None:
                         for x, y in X[i, j]:
                             grid[i0][j0] += np.exp(- ((x0 - x)**2)/
-                                (2*sigmaSq) - ((y0 - y)**2)/(2*sigmaSq))
+                                (2*sigma_sq) - ((y0 - y)**2)/(2*sigma_sq))
 
     return grid
 
@@ -98,11 +98,11 @@ def heatmap_barplot(grid, h=4, width=10, bar_scale=0.9, num_colors=10, colormap=
     objList = []
     for i, bm in enumerate(bmList):
         # Create object
-        obj = utils.bmeshToObject(bm)
+        obj = utils.bmesh_to_object(bm)
 
         # Create material with colormap
         color = colormap(i / num_colors)
-        mat = utils.simpleMaterial(color[:3])
+        mat = utils.simple_material(color[:3])
         obj.data.materials.append(mat)
         objList.append(obj)
 
@@ -113,17 +113,23 @@ def heatmap_barplot(grid, h=4, width=10, bar_scale=0.9, num_colors=10, colormap=
 
 if __name__ == '__main__':
     # Settings
-    iso_a2, tag_key, tag_value = 'DE', 'amenity', 'biergarten'
-    res_x, res_y = 768, 432
+    iso_a2, tag_key, tag_value = 'GB', 'amenity', 'pub'
+    #res_x, res_y = 768, 432
     #res_x, res_y =  600, 600
     #res_x, res_y =  640, 480
     #res_x, res_y =  640, 360
-    #res_x, res_y = 1280, 720
-    num_frames = 40
+    res_x, res_y = 1280, 720
+
+    animation = False
     #r, camera_z = 10, 7
     r, camera_z = 12, 10
-    target_z = 0.1
-    #target_z = 0.8
+    num_frames = 40
+
+    #camera_position, target_position = (3, -10, 8), (0.3, -1.8, 0.5)  # DE
+    #camera_position, target_position = (3, -10, 8), (0.3, 0.0, 0.5)  # AT
+    #camera_position, target_position = (3, -10, 8), (-0.1, -0.4, 1.0)  # CH
+    camera_position, target_position = (-2, -10, 8), (0.0, -2.6, 1.0)  # GB
+
     #camera_type, ortho_scale = 'ORTHO', 15
     camera_type, ortho_scale = 'PERSP', 18
     render_idx = 0
@@ -134,11 +140,11 @@ if __name__ == '__main__':
     bpy.ops.object.delete(use_global=False)
 
     # Create scene
-    target = utils.createTarget((0, 0, target_z))
-    camera = utils.createCamera(target=target,
+    target = utils.create_target(target_position)
+    camera = utils.create_camera(camera_position, target=target,
         camera_type=camera_type, ortho_scale=ortho_scale, lens=28)
         #type='ORTHO', ortho_scale=12)
-    sun = utils.createLamp((-5, 5, 10), 'SUN', target=target)
+    sun = utils.create_lamp((-5, 5, 10), 'SUN', target=target)
 
     # Set background color
     bpy.context.scene.world.horizon_color = (0.7, 0.7, 0.7)
@@ -147,28 +153,46 @@ if __name__ == '__main__':
     bpy.context.scene.world.light_settings.use_ambient_occlusion = True
     bpy.context.scene.world.light_settings.samples = 8
 
-    # Load points from geojson
+    # Load points from existing geojson file or load them with Overpass API
     filepath = 'data/points_{}_{}_{}.json'.format(iso_a2, tag_key, tag_value)
-    points, names = load_osm_data.load_points(filepath)
+    if os.path.exists(filepath):
+        points, names = utils_osm.load_points(filepath)
+    else:
+        points, names = utils_osm.overpass_load_points(
+                                    iso_a2, tag_key, tag_value)
+        if not os.path.exists('data'): os.mkdir('data')
+        utils_osm.save_points(filepath, points, names)
 
+    print("Number of points : {}".format(len(points)))
+
+    # Project points into Mercator projection
     p = Proj(init="epsg:3785")  # Popular Visualisation CRS / Mercator
     points = np.apply_along_axis(lambda x : p(*x), 1, points)
 
+    # Create heatmap barplot
     data = normalize_points(points)
-    hist = heatmap_grid(data, sigmaSq=0.00005, n=80)
-    heatmap_barplot(hist)
-
-    print("Number of points : {}".format(points.shape[0]))
+    #hist = heatmap_grid(data, sigma_sq=0.00005, n=80)
+    hist = heatmap_grid(data, sigma_sq=0.00002, n=100)
+    #heatmap_barplot(hist, colormap=cm.Wistia)
+    heatmap_barplot(hist, colormap=cm.viridis)
+    #heatmap_barplot(hist, colormap=cm.YlGn_r)
+    #heatmap_barplot(hist, colormap=cm.summer_r)
 
     # Animate rotation of camera
-    for frame in range(1, num_frames):
-        t = frame / num_frames
-        x, y = r*cos(TAU*t), r*sin(TAU*t)
-        camera.location = (x, y, camera_z)
-        camera.keyframe_insert(data_path="location", index=-1, frame=frame)
+    if animation:
+        for frame in range(1, num_frames):
+            t = frame / num_frames
+            x, y = r*cos(TAU*t), r*sin(TAU*t)
+            camera.location = (x, y, camera_z)
+            camera.keyframe_insert(data_path="location", index=-1, frame=frame)
+
+        render_folder = '{}_{}_{}_{}_{}_{}_{:0>3}'.format(
+            iso_a2, tag_key, tag_value, camera_type, res_x, res_y, render_idx)
+        render_name   = 'render'
+    else:
+        render_folder = 'render'
+        render_name   = '{}_{}_{}_{}_{}_{}_{:0>3}'.format(
+            iso_a2, tag_key, tag_value, camera_type, res_x, res_y, render_idx)
 
     # Render result
-    frames_folder = '{}_{}_{}_{}_{}_{}_{:0>3}'.format(
-        iso_a2, tag_key, tag_value, camera_type, res_x, res_y, render_idx)
-
-    utils.renderToFolder(frames_folder, res_x=res_x, res_y=res_y, animation=True, frame_end=num_frames, render_opengl=False)
+    utils.render_to_folder(render_folder, render_name, res_x=res_x, res_y=res_y, animation=animation, frame_end=num_frames, render_opengl=False)
