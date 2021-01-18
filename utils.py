@@ -7,9 +7,13 @@ def simple_material(diffuse_color):
     mat = bpy.data.materials.new('Material')
 
     # Diffuse
-    mat.diffuse_shader = 'LAMBERT'
-    mat.diffuse_intensity = 0.9
-    mat.diffuse_color = diffuse_color
+    if bpy.app.version < (2, 80, 0):
+        mat.diffuse_shader = 'LAMBERT'
+        mat.diffuse_intensity = 0.9
+        mat.diffuse_color = diffuse_color
+    else:
+        _diffuse_color = (diffuse_color + (0.9,))
+        mat.diffuse_color = _diffuse_color
 
     # Specular
     mat.specular_intensity = 0
@@ -22,9 +26,12 @@ def bmesh_to_object(bm, name='Object'):
     bm.free()
 
     obj = bpy.data.objects.new(name, mesh)
-    bpy.context.scene.objects.link(obj)
-    bpy.context.scene.update()
-
+    if bpy.app.version < (2, 80, 0):
+        bpy.context.scene.objects.link(obj)
+        bpy.context.scene.update()
+    else:
+        bpy.context.collection.objects.link(obj)
+        bpy.context.view_layer.update()
     return obj
 
 def track_to_constraint(obj, target):
@@ -35,7 +42,10 @@ def track_to_constraint(obj, target):
 
 def create_target(origin=(0,0,0)):
     tar = bpy.data.objects.new('Target', None)
-    bpy.context.scene.objects.link(tar)
+    if bpy.app.version < (2, 80, 0):
+        bpy.context.scene.objects.link(tar)
+    else:
+        bpy.context.collection.objects.link(tar)
     tar.location = origin
 
     return tar
@@ -53,7 +63,10 @@ def create_camera(origin=(0,0,0), target=None, lens=35, clip_start=0.1, clip_end
     # Link object to scene
     obj = bpy.data.objects.new("CameraObj", camera)
     obj.location = origin
-    bpy.context.scene.objects.link(obj)
+    if bpy.app.version < (2, 80, 0):
+        bpy.context.scene.objects.link(obj)
+    else:
+        bpy.context.collection.objects.link(obj)
     bpy.context.scene.camera = obj # Make this the current camera
 
     if target: track_to_constraint(obj, target)
@@ -61,11 +74,18 @@ def create_camera(origin=(0,0,0), target=None, lens=35, clip_start=0.1, clip_end
 
 def create_lamp(origin, type='POINT', energy=1, color=(1,1,1), target=None):
     # Lamp types: 'POINT', 'SUN', 'SPOT', 'HEMI', 'AREA'
-    bpy.ops.object.add(type='LAMP', location=origin)
-    obj = bpy.context.object
-    obj.data.type = type
-    obj.data.energy = energy
-    obj.data.color = color
+    if bpy.app.version < (2, 80, 0):
+        bpy.ops.object.add(type='LAMP', location=origin)
+        obj = bpy.context.object
+        obj.data.type = type
+        obj.data.energy = energy
+        obj.data.color = color
+    else:
+        light_data = bpy.data.lights.new(name='New light', type=type)
+        obj = bpy.data.objects.new(name='New light', object_data=light_data)
+        obj.location = origin
+        light_data.energy = energy
+        light_data.color = color
 
     if target: track_to_constraint(obj, target)
     return obj
