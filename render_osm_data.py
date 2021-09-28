@@ -87,13 +87,16 @@ def heatmap_barplot(grid, h=4, width=10, bar_scale=0.9, num_colors=10, colormap=
                 k = min(int(num_colors*t), num_colors - 1)
                 bm = bmList[k]
 
-                T = Matrix.Translation((
+                T = Matrix.Translation(Vector((
                     width*(x - 0.5),
                     width*(y - 0.5),
-                    bar_height / 2))
+                    bar_height / 2)))
 
-                S = Matrix.Scale(bar_height / bar_width, 4, (0, 0, 1))
-                bmesh.ops.create_cube(bm, size=bar_width, matrix=T*S)
+                S = Matrix.Scale(bar_height / bar_width, 4, Vector((0, 0, 1)))
+                if bpy.app.version < (2, 80, 0):
+                    bmesh.ops.create_cube(bm, size=bar_width, matrix=T*S)
+                else:
+                    bmesh.ops.create_cube(bm, size=bar_width, matrix=T@S)
 
     objList = []
     for i, bm in enumerate(bmList):
@@ -136,7 +139,10 @@ if __name__ == '__main__':
 
 
     # Remove all elements in scene
-    bpy.ops.object.select_by_layer()
+    if bpy.app.version < (2, 80, 0):
+        bpy.ops.object.select_by_layer()
+    else:
+        bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
 
     # Create scene
@@ -147,11 +153,15 @@ if __name__ == '__main__':
     sun = utils.create_lamp((-5, 5, 10), 'SUN', target=target)
 
     # Set background color
-    bpy.context.scene.world.horizon_color = (0.7, 0.7, 0.7)
+    if bpy.app.version < (2, 80, 0):
+        bpy.context.scene.world.horizon_color = (0.7, 0.7, 0.7)
+    else:
+        bpy.context.scene.world.color = (0.7, 0.7, 0.7)
 
     # Ambient occlusion
     bpy.context.scene.world.light_settings.use_ambient_occlusion = True
-    bpy.context.scene.world.light_settings.samples = 8
+    if bpy.app.version < (2, 80, 0):
+        bpy.context.scene.world.light_settings.samples = 8
 
     # Load points from existing geojson file or load them with Overpass API
     filepath = 'data/points_{}_{}_{}.json'.format(iso_a2, tag_key, tag_value)
