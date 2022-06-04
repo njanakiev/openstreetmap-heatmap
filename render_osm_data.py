@@ -1,16 +1,16 @@
-import bpy
-import bmesh
 import os
-import sys
 import numpy as np
 from pyproj import Proj
 from mathutils import Matrix, Vector
 from matplotlib import cm
-from bpy.app.handlers import persistent
+
+import bpy
+import bmesh
 import utils
 import utils_osm
 from math import sin, cos, pi
 TAU = 2*pi
+
 
 
 def normalize_points(points):
@@ -75,7 +75,7 @@ def heatmap_barplot(grid, h=4, width=10, bar_scale=0.9, num_colors=10, colormap=
     bar_width = bar_scale * width / max(n, m)
 
     # List of bmesh elements for each color group
-    bmList = [bmesh.new() for i in range(num_colors)]
+    bmList = [bmesh.new() for _ in range(num_colors)]
 
     # Iterate over grid
     for i in range(n):
@@ -116,7 +116,7 @@ def heatmap_barplot(grid, h=4, width=10, bar_scale=0.9, num_colors=10, colormap=
 
 if __name__ == '__main__':
     # Settings
-    iso_a2, tag_key, tag_value = 'GB', 'amenity', 'pub'
+    iso_a2, tag_key, tag_value = 'SK', 'natural', 'tree'
     #res_x, res_y = 768, 432
     #res_x, res_y =  600, 600
     #res_x, res_y =  640, 480
